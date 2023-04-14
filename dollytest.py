@@ -3,10 +3,16 @@
 # (c) Guido Appenzeller, 2023
 #
 
+import os
 from datetime import datetime
 
-test = True
-model = "databricks/dolly-v2-12b"
+# Check if we are running in the cloud or on a laptop
+if os.environ.get('USER') == 'ubuntu':
+    test = False
+    model = "databricks/dolly-v2-12b"
+else:
+    test = True
+    model = "dummy/dummymodel-0b"
 
 # Log messages to console with timestamp
 
