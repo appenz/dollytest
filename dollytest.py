@@ -4,18 +4,26 @@
 #
 
 import os
+import platform
 from datetime import datetime
 
-# Check if we are running in the cloud or on a laptop
-if os.environ.get('USER') == 'ubuntu':
-    platform = 'aws'
-    model_v = "databricks/dolly-v2-12b"
-elif False:
-    platform = 'macbook'
-    model_v = "databricks/dolly-v2-3b"
+my_os = platform.system()
+
+try:
+    from instruct_pipeline import InstructionTextGenerationPipeline
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+except:
+    print("Warning: transformers not installed, using test model")
+    mode = 'test'
+    model_v = "test/test-v1-0b"
 else:
-    platform = 'test'
-    model_v = "test/test-v1-0b"   
+    mode = 'prod'
+    if my_os == 'Linux':
+        model_v = "databricks/dolly-v2-12b"
+    elif my_os == 'Darwin':
+        model_v = "databricks/dolly-v2-3b"
+
+
 
 # Log messages to console with timestamp
 
@@ -23,34 +31,18 @@ def plog(msg):
     print(datetime.now().strftime("%H:%M:%S") + " " + msg)
 
 plog('starting')
-
-# Setup for different platforms
-
-if platform == 'aws':
-    from instruct_pipeline import InstructionTextGenerationPipeline
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-
+if mode == 'prod':
     plog("loading tokenizer")
     tokenizer = AutoTokenizer.from_pretrained(model_v)
     plog("loading model")
-    model = AutoModelForCausalLM.from_pretrained(model_v, device_map="auto", load_in_8bit=True)
+    if my_os == 'linux':
+        model = AutoModelForCausalLM.from_pretrained(model_v, device_map="auto", load_in_8bit=True)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(model_v, device_map="auto")
 
     plog("creating pipeline")
     generate_text = InstructionTextGenerationPipeline(model=model, tokenizer=tokenizer)
-
-elif platform == 'macbook':
-    from instruct_pipeline import InstructionTextGenerationPipeline
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-
-    plog("loading tokenizer")
-    tokenizer = AutoTokenizer.from_pretrained(model_v)
-    plog("loading model")
-    model = AutoModelForCausalLM.from_pretrained(model_v, device_map="auto", load_in_8bit=True)
-
-    plog("creating pipeline")
-    generate_text = InstructionTextGenerationPipeline(model=model, tokenizer=tokenizer)
-
-elif platform == 'test':
+else:
     generate_text = lambda x: "Dolly says:" + x
 
 plog("ready.")
